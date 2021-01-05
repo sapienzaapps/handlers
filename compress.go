@@ -14,7 +14,10 @@ import (
 	"github.com/felixge/httpsnoop"
 )
 
-const acceptEncoding string = "Accept-Encoding"
+const (
+	acceptEncoding  string = "Accept-Encoding"
+	contentEncoding string = "Content-Encoding"
+)
 
 type compressResponseWriter struct {
 	compressor io.Writer
@@ -22,6 +25,13 @@ type compressResponseWriter struct {
 }
 
 func (cw *compressResponseWriter) WriteHeader(c int) {
+	h := cw.w.Header()
+
+	// Some HTTP clients will error if the Content-Encoding is set when responding with a 204 or 304.
+	if c == http.StatusNoContent || c == http.StatusNotModified {
+		h.Del(contentEncoding)
+	}
+
 	cw.w.Header().Del("Content-Length")
 	cw.w.WriteHeader(c)
 }
@@ -115,7 +125,7 @@ func CompressHandlerLevel(h http.Handler, level int) http.Handler {
 		}
 		defer encWriter.Close()
 
-		w.Header().Set("Content-Encoding", encoding)
+		w.Header().Set(contentEncoding, encoding)
 		r.Header.Del(acceptEncoding)
 
 		cw := &compressResponseWriter{
