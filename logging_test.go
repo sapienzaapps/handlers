@@ -211,6 +211,12 @@ func TestLogFormatterCombinedLog_Scenario5(t *testing.T) {
 	LoggingScenario5(t, formatter, expected)
 }
 
+func TestLogFormatterWriteLog_Scenario6(t *testing.T) {
+	formatter := writeLog
+	expected := "192.168.100.5 - JohnDoe [26/May/1983:03:30:45 +0200] \"GET / HTTP/1.1\" 401 500\n"
+	LoggingScenario6(t, formatter, expected)
+}
+
 func LoggingScenario1(t *testing.T, formatter LogFormatter, expected string) {
 	loc, err := time.LoadLocation("Europe/Warsaw")
 	if err != nil {
@@ -335,6 +341,33 @@ func LoggingScenario5(t *testing.T, formatter LogFormatter, expected string) {
 		TimeStamp:  ts,
 		StatusCode: http.StatusOK,
 		Size:       100,
+	}
+	formatter(buf, params)
+	log := buf.String()
+
+	if log != expected {
+		t.Fatalf("wrong log, got %q want %q", log, expected)
+	}
+}
+func LoggingScenario6(t *testing.T, formatter LogFormatter, expected string) {
+	loc, err := time.LoadLocation("Europe/Warsaw")
+	if err != nil {
+		panic(err)
+	}
+	ts := time.Date(1983, 05, 26, 3, 30, 45, 0, loc)
+
+	// Request with an unauthorized user
+	req := constructTypicalRequestOk()
+	// Set user via basic auth
+	req.SetBasicAuth("JohnDoe", "some password")
+
+	buf := new(bytes.Buffer)
+	params := LogFormatterParams{
+		Request:    req,
+		URL:        *req.URL,
+		TimeStamp:  ts,
+		StatusCode: http.StatusUnauthorized,
+		Size:       500,
 	}
 	formatter(buf, params)
 	log := buf.String()
